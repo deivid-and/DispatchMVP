@@ -1,0 +1,148 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  manager
+  dispatcher
+}
+
+enum TrailerType {
+  dryvan
+  reefer
+  flatbed
+  stepdeck
+}
+
+enum LoadStatus {
+  Ready
+  Transit
+  HT
+  Late
+  Delivered
+  Canceled
+}
+
+enum SettlementStatus {
+  open
+  finalized
+  paid
+}
+
+model User {
+  id             String   @id @default(uuid())
+  name           String
+  email          String   @unique
+  role           UserRole
+  commissionPct  Decimal  @db.Decimal(5,2) // e.g. 5.00 = 5%
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  drivers        Driver[]
+  loads          Load[]   @relation("LoadsByDispatcher")
+  settlements    DispatcherSettlement[]
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  drivers   Driver[]
+  loads     Load[]
+}
+
+model Driver {
+  id            String      @id @default(uuid())
+  name          String
+  phone         String?
+  trailerType   TrailerType
+  truckNumber   String?
+  trailerNumber String?
+  notes         String?
+  active        Boolean     @default(true)
+  dispatcherId  String
+  companyId     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  dispatcher User    @relation(fields: [dispatcherId], references: [id])
+  company    Company? @relation(fields: [companyId], references: [id])
+  loads      Load[]
+}
+
+model Load {
+  id              String      @id @default(uuid())
+  companyId       String
+  dispatcherId    String
+  driverId        String
+  brokerName      String?
+  brokerMcNumber  String?
+  loadNumber      String?
+  pickupName      String?
+  pickupAddress   String?
+  pickupCity      String
+  pickupState     String
+  pickupZip       String?
+  pickupAt        DateTime?
+  deliveryAddress String?
+  deliveryCity    String
+  deliveryState   String
+  deliveryZip     String?
+  deliveryAt      DateTime?
+  rate            Decimal     @db.Decimal(12,2)
+  miles           Int
+  deadhead        Int         @default(0)
+  status          LoadStatus  @default(Ready)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  company    Company @relation(fields: [companyId], references: [id])
+  dispatcher User    @relation("LoadsByDispatcher", fields: [dispatcherId], references: [id])
+  driver     Driver  @relation(fields: [driverId], references: [id])
+  files      LoadFile[]
+
+  @@index([dispatcherId, deliveryAt])
+  @@index([driverId, deliveryAt])
+  @@index([companyId])
+  @@unique([companyId, loadNumber], map: "uniq_company_loadnumber")
+}
+
+model LoadFile {
+  id        String   @id @default(uuid())
+  loadId    String
+  filename  String
+  url       String
+  createdAt DateTime @default(now())
+
+  load Load @relation(fields: [loadId], references: [id])
+}
+
+model DispatcherSettlement {
+  id             String            @id @default(uuid())
+  dispatcherId   String
+  periodStart    DateTime
+  periodEnd      DateTime
+  gross          Decimal           @db.Decimal(12,2)
+  commissionPct  Decimal           @db.Decimal(5,2)
+  payoutAmount   Decimal           @db.Decimal(12,2)
+  status         SettlementStatus  @default(open)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  dispatcher User @relation(fields: [dispatcherId], references: [id])
+
+  @@index([dispatcherId, periodStart, periodEnd])
+}

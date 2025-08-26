@@ -22,3 +22,22 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+tee -a .gitignore <<'EOF'
+
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+
+
+pgdata/
+postgres-data/
+
+
+server/dist
+
+coverage/
+.eslintcache
+docker-compose.override.yml
+EOF

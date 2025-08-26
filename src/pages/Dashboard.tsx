@@ -1,19 +1,20 @@
-import React, { useState } from 'react';
-import { MainLayout } from '../components/layout/MainLayout';
-import { PageHeader } from '../components/header/PageHeader';
-import { Board } from '../features/board/Board';
-import { mockCompanies, mockDispatchers, mockDrivers, mockLoads, mockRanges, weekDays } from '../data/mock';
+import React, { useState } from "react";
+import { MainLayout } from "../components/layout/MainLayout";
+import { PageHeader } from "../components/header/PageHeader";
+import { Board } from "../features/board/Board";
+import { mockCompanies, mockRanges } from "../data/mock";
+import AddLoadModal from "../features/loads/AddLoadModal";
 
 export function Dashboard() {
   const [selectedCompany, setSelectedCompany] = useState(mockCompanies[0].id);
   const [rangeIdx, setRangeIdx] = useState(1);
   const range = mockRanges[rangeIdx];
+  const [showAdd, setShowAdd] = useState(false);
 
-  // Mock user data - in a real app this would come from auth context
   const user = {
     name: "John Doe",
     email: "john.doe@dispatchmvp.com",
-    avatar: undefined
+    avatar: undefined,
   };
 
   return (
@@ -23,7 +24,7 @@ export function Dashboard() {
       onCompanyChange={setSelectedCompany}
       user={user}
     >
-      <PageHeader 
+      <PageHeader
         title="Dashboard"
         range={range}
         rangeIdx={rangeIdx}
@@ -33,20 +34,14 @@ export function Dashboard() {
         <button
           className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded shadow transition"
           type="button"
+          onClick={() => setShowAdd(true)}
         >
           Add New Load
         </button>
       </PageHeader>
-      
-      <Board
-        companies={mockCompanies}
-        dispatchers={mockDispatchers}
-        drivers={mockDrivers}
-        loads={mockLoads}
-        weekDays={weekDays}
-        dateRange={range}
-        selectedCompany={selectedCompany}
-      />
+
+      <Board />
+      <AddLoadModal open={showAdd} onClose={() => setShowAdd(false)} />
     </MainLayout>
   );
 }
