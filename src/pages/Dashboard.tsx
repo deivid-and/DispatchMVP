@@ -4,12 +4,15 @@ import { PageHeader } from "../components/header/PageHeader";
 import { Board } from "../features/board/Board";
 import { mockCompanies, mockRanges } from "../data/mock";
 import AddLoadModal from "../features/loads/AddLoadModal";
+import AddLoadForm from "../features/loads/AddLoadForm";
 
 export function Dashboard() {
   const [selectedCompany, setSelectedCompany] = useState(mockCompanies[0].id);
   const [rangeIdx, setRangeIdx] = useState(1);
   const range = mockRanges[rangeIdx];
+
   const [showAdd, setShowAdd] = useState(false);
+  const [refresh, setRefresh] = useState(0);
 
   const user = {
     name: "John Doe",
@@ -40,8 +43,18 @@ export function Dashboard() {
         </button>
       </PageHeader>
 
-      <Board />
-      <AddLoadModal open={showAdd} onClose={() => setShowAdd(false)} />
+      <Board refreshToken={refresh} />
+
+      <AddLoadModal open={showAdd} onClose={() => setShowAdd(false)}>
+        <AddLoadForm
+          defaultCompanyId={selectedCompany}
+          onCancel={() => setShowAdd(false)}
+          onSuccess={() => {
+            setShowAdd(false);
+            setRefresh((r) => r + 1);
+          }}
+        />
+      </AddLoadModal>
     </MainLayout>
   );
 }

@@ -15,3 +15,24 @@ export async function getBoard(start: string, end: string, params?: { companyId?
   if (!res.ok) throw new Error(`Board fetch failed: ${res.status}`);
   return res.json();
 }
+
+
+
+export type CreateLoad = {
+  companyId: string; dispatcherId: string; driverId: string;
+  pickupCity: string; pickupState: string;
+  deliveryCity: string; deliveryState: string;
+  rate: number; miles: number; deadhead?: number;
+  loadNumber?: string; brokerName?: string; brokerMcNumber?: string;
+  pickupAt?: string; deliveryAt?: string; status?: string;
+};
+
+export async function createLoad(body: CreateLoad): Promise<BoardLoad> {
+  const res = await fetch(`${API}/api/loads`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Create load failed: ${res.status}`);
+  return res.json();
+}

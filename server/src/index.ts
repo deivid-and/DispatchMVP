@@ -10,6 +10,7 @@ async function startServer() {
   await app.register(cors, { origin: "http://localhost:5173" });
   await app.register(boardRoutes, { prefix: "/api" });
   await app.register(loadsRoutes, { prefix: "/api" });
+  console.log("Routes registered");
 
   app.get("/health", async () => ({ ok: true }));
 
