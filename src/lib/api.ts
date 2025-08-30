@@ -25,6 +25,8 @@ export type CreateLoad = {
   rate: number; miles: number; deadhead?: number;
   loadNumber?: string; brokerName?: string; brokerMcNumber?: string;
   pickupAt?: string; deliveryAt?: string; status?: string;
+  pickupWindowStart?: string; pickupWindowEnd?: string;
+  deliveryWindowStart?: string; deliveryWindowEnd?: string;
 };
 
 export async function createLoad(body: CreateLoad): Promise<BoardLoad> {

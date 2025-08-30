@@ -5,15 +5,23 @@ type Props = {
   defaultCompanyId: string;
   onSuccess: () => void;
   onCancel: () => void;
+  defaultPickupDateIso?: string; // YYYY-MM-DD (from board week)
+  defaultDeliveryDateIso?: string; // YYYY-MM-DD (from board week)
 };
 
-export default function AddLoadForm({ defaultCompanyId, onSuccess, onCancel }: Props) {
+export default function AddLoadForm({ defaultCompanyId, onSuccess, onCancel, defaultPickupDateIso, defaultDeliveryDateIso }: Props) {
   const [form, setForm] = useState({
     companyId: defaultCompanyId,
     dispatcherId: "",
     driverId: "",
     pickupCity: "", pickupState: "",
     deliveryCity: "", deliveryState: "",
+    pickupDate: "",
+    deliveryDate: "",
+    pickupWindowStart: "",
+    pickupWindowEnd: "",
+    deliveryWindowStart: "",
+    deliveryWindowEnd: "",
     rate: "", miles: "",
   });
   const [busy, setBusy] = useState(false);
@@ -58,6 +66,29 @@ export default function AddLoadForm({ defaultCompanyId, onSuccess, onCancel }: P
     return () => { ignore = true; };
   }, []);
 
+  // Initialize default pickup/delivery dates (prefer board week if provided)
+  useEffect(() => {
+    setForm(f => {
+      if (f.pickupDate && f.deliveryDate) return f;
+      const now = new Date();
+      const today = new Date(now);
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      const toDateInput = (d: Date) => {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        const mm = pad(d.getMonth() + 1);
+        const dd = pad(d.getDate());
+        return `${yyyy}-${mm}-${dd}`;
+      };
+      return {
+        ...f,
+        pickupDate: f.pickupDate || defaultPickupDateIso || toDateInput(today),
+        deliveryDate: f.deliveryDate || defaultDeliveryDateIso || toDateInput(tomorrow),
+      };
+    });
+  }, [defaultPickupDateIso, defaultDeliveryDateIso]);
+
   function upd<K extends keyof typeof form>(k: K, v: string) {
     setForm(f => ({ ...f, [k]: v }));
   }
@@ -72,6 +103,13 @@ export default function AddLoadForm({ defaultCompanyId, onSuccess, onCancel }: P
         driverId: form.driverId,
         pickupCity: form.pickupCity, pickupState: form.pickupState,
         deliveryCity: form.deliveryCity, deliveryState: form.deliveryState,
+        // Send stable UTC noon to avoid timezone date shifts
+        pickupAt: form.pickupDate ? new Date(`${form.pickupDate}T12:00:00Z`).toISOString() : undefined,
+        deliveryAt: form.deliveryDate ? new Date(`${form.deliveryDate}T12:00:00Z`).toISOString() : undefined,
+        pickupWindowStart: form.pickupWindowStart || undefined,
+        pickupWindowEnd: form.pickupWindowEnd || undefined,
+        deliveryWindowStart: form.deliveryWindowStart || undefined,
+        deliveryWindowEnd: form.deliveryWindowEnd || undefined,
         rate: Number(form.rate), miles: Number(form.miles),
       });
       onSuccess();
@@ -139,12 +177,68 @@ export default function AddLoadForm({ defaultCompanyId, onSuccess, onCancel }: P
           <input className="w-full border rounded px-2 py-1 text-sm" maxLength={2} value={form.pickupState} onChange={e=>upd("pickupState", e.target.value.toUpperCase())} />
         </div>
         <div>
+          <label className="block text-xs text-gray-600 mb-1">Pickup Date (MM/DD/YYYY)</label>
+          <input
+            className="w-full border rounded px-2 py-1 text-sm"
+            type="date"
+            required
+            value={form.pickupDate}
+            onChange={e=>upd("pickupDate", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Pickup Window Start (HH:MM)</label>
+          <input
+            className="w-full border rounded px-2 py-1 text-sm"
+            type="time"
+            value={form.pickupWindowStart}
+            onChange={e=>upd("pickupWindowStart", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Pickup Window End (HH:MM)</label>
+          <input
+            className="w-full border rounded px-2 py-1 text-sm"
+            type="time"
+            value={form.pickupWindowEnd}
+            onChange={e=>upd("pickupWindowEnd", e.target.value)}
+          />
+        </div>
+        <div>
           <label className="block text-xs text-gray-600 mb-1">Delivery City</label>
           <input className="w-full border rounded px-2 py-1 text-sm" value={form.deliveryCity} onChange={e=>upd("deliveryCity", e.target.value)} />
         </div>
         <div>
           <label className="block text-xs text-gray-600 mb-1">Delivery State</label>
           <input className="w-full border rounded px-2 py-1 text-sm" maxLength={2} value={form.deliveryState} onChange={e=>upd("deliveryState", e.target.value.toUpperCase())} />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Delivery Date (MM/DD/YYYY)</label>
+          <input
+            className="w-full border rounded px-2 py-1 text-sm"
+            type="date"
+            required
+            value={form.deliveryDate}
+            onChange={e=>upd("deliveryDate", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Delivery Window Start (HH:MM)</label>
+          <input
+            className="w-full border rounded px-2 py-1 text-sm"
+            type="time"
+            value={form.deliveryWindowStart}
+            onChange={e=>upd("deliveryWindowStart", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Delivery Window End (HH:MM)</label>
+          <input
+            className="w-full border rounded px-2 py-1 text-sm"
+            type="time"
+            value={form.deliveryWindowEnd}
+            onChange={e=>upd("deliveryWindowEnd", e.target.value)}
+          />
         </div>
         <div>
           <label className="block text-xs text-gray-600 mb-1">Rate (USD)</label>

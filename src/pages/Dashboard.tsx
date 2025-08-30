@@ -43,11 +43,17 @@ export function Dashboard() {
         </button>
       </PageHeader>
 
-      <Board refreshToken={refresh} />
+      <Board
+        refreshToken={refresh}
+        start={range.iso[0]}
+        end={range.iso[range.iso.length - 1]}
+      />
 
       <AddLoadModal open={showAdd} onClose={() => setShowAdd(false)}>
         <AddLoadForm
           defaultCompanyId={selectedCompany}
+          defaultPickupDateIso={range.iso[0]}
+          defaultDeliveryDateIso={range.iso[Math.min(1, range.iso.length - 1)]}
           onCancel={() => setShowAdd(false)}
           onSuccess={() => {
             setShowAdd(false);

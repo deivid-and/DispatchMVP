@@ -19,6 +19,18 @@ async function main() {
     create: { name: "Roger", email: "dispatcher@local", role: "dispatcher", commissionPct: "05.00" },
   });
 
+  // Additional dispatchers for JMJMN
+  const extraDispatchers = [] as { id: string; name: string }[];
+  for (let i = 1; i <= 5; i++) {
+    const email = `dispatcher${i}@local`;
+    const d = await db.user.upsert({
+      where: { email },
+      update: {},
+      create: { name: `Dispatcher ${i}`, email, role: "dispatcher", commissionPct: "05.00" },
+    });
+    extraDispatchers.push({ id: d.id, name: d.name });
+  }
+
   // Companies
   const jmjmn = await db.company.upsert({
     where: { name: "JMJNM" },
@@ -60,6 +72,47 @@ async function main() {
       companyId: jmjmn.id,
     },
   });
+
+  // Generate 10 drivers for each extra dispatcher under JMJMN
+  const trailerTypes = ["dryvan", "reefer", "flatbed", "stepdeck"] as const;
+  const rand = (n: number) => Math.floor(Math.random() * n);
+  const makeId = (prefix: string, i: number, j: number) => `seed-${prefix}-${i}-${j}`;
+  const cityStatePairs = [
+    { city: "Chicago", state: "IL" },
+    { city: "Dallas", state: "TX" },
+    { city: "Houston", state: "TX" },
+    { city: "St. Louis", state: "MO" },
+    { city: "Kansas City", state: "MO" },
+    { city: "Denver", state: "CO" },
+    { city: "Salt Lake City", state: "UT" },
+    { city: "Seattle", state: "WA" },
+    { city: "Portland", state: "OR" },
+    { city: "Boise", state: "ID" },
+  ];
+
+  const newDrivers: { id: string; name: string; dispatcherId: string }[] = [];
+  for (let i = 1; i <= extraDispatchers.length; i++) {
+    const disp = extraDispatchers[i - 1];
+    for (let j = 1; j <= 10; j++) {
+      const id = makeId("dr", i, j);
+      const name = `Driver ${i}-${j}`;
+      const d = await db.driver.upsert({
+        where: { id },
+        update: {},
+        create: {
+          id,
+          name,
+          phone: `+1 555-${1000 + i}${(100 + j).toString().padStart(3, '0')}`,
+          trailerType: trailerTypes[rand(trailerTypes.length)] as any,
+          truckNumber: `TX${i}${j}`,
+          trailerNumber: `TR${i}${j}`,
+          dispatcherId: disp.id,
+          companyId: jmjmn.id,
+        },
+      });
+      newDrivers.push({ id: d.id, name, dispatcherId: disp.id });
+    }
+  }
 
   // Loads (dates ISO; rpm is derived in UI)
   await db.load.upsert({
@@ -126,7 +179,42 @@ async function main() {
     },
   });
 
-  console.log("Seeded: users, companies, drivers, loads");
+  // Generate loads for new drivers in target week 2025-07-21..2025-07-23
+  let loadSeq = 200000;
+  for (const nd of newDrivers) {
+    const numLoads = 2; // Mon and Tue for visibility
+    for (let k = 0; k < numLoads; k++) {
+      const puIdx = rand(cityStatePairs.length);
+      let deIdx = rand(cityStatePairs.length);
+      if (deIdx === puIdx) deIdx = (deIdx + 1) % cityStatePairs.length;
+      const pu = cityStatePairs[puIdx];
+      const de = cityStatePairs[deIdx];
+      const day = k === 0 ? "2025-07-21" : "2025-07-22";
+      const id = `seed-gen-${nd.id}-${k}`;
+      await db.load.upsert({
+        where: { id },
+        update: {},
+        create: {
+          id,
+          companyId: jmjmn.id,
+          dispatcherId: nd.dispatcherId,
+          driverId: nd.id,
+          brokerName: ["TQL", "Coyote", "CH Robinson", "Landstar"][rand(4)],
+          loadNumber: String(loadSeq++),
+          pickupName: "Warehouse",
+          pickupAddress: "100 Main St",
+          pickupCity: pu.city, pickupState: pu.state, pickupZip: "00000",
+          pickupAt: new Date(`${day}T08:00:00Z`),
+          deliveryAddress: "200 Market Rd",
+          deliveryCity: de.city, deliveryState: de.state, deliveryZip: "00000",
+          deliveryAt: new Date(`${day}T17:00:00Z`),
+          rate: String(800 + rand(1200) + 200), miles: 300 + rand(900), deadhead: rand(150), status: ["Ready", "Transit", "HT"][rand(3)] as any,
+        },
+      });
+    }
+  }
+
+  console.log("Seeded: users, companies, drivers, loads (including generated)");
 }
 
 main().catch((e) => {

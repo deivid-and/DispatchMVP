@@ -97,11 +97,15 @@ model Load {
   pickupState     String
   pickupZip       String?
   pickupAt        DateTime?
+  pickupWindowStart String?   // "08:00"
+  pickupWindowEnd   String?   // "17:00"
   deliveryAddress String?
   deliveryCity    String
   deliveryState   String
   deliveryZip     String?
   deliveryAt      DateTime?
+  deliveryWindowStart String? // "08:00"
+  deliveryWindowEnd   String? // "17:00"
   rate            Decimal     @db.Decimal(12,2)
   miles           Int
   deadhead        Int         @default(0)

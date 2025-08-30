@@ -15,13 +15,17 @@ const Body = z.object({
   pickupState: z.string().min(2).max(2),
   pickupAddress: z.string().optional(),
   pickupZip: z.string().optional(),
-  pickupAt: z.string().datetime().optional(), // ISO
+  pickupAt: z.string().datetime().optional(), // ISO, optional (time can be empty)
+  pickupWindowStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  pickupWindowEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
 
   deliveryCity: z.string().min(1),
   deliveryState: z.string().min(2).max(2),
   deliveryAddress: z.string().optional(),
   deliveryZip: z.string().optional(),
-  deliveryAt: z.string().datetime().optional(), // ISO
+  deliveryAt: z.string().datetime().optional(), // ISO, optional (time can be empty)
+  deliveryWindowStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  deliveryWindowEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
 
   rate: z.union([z.number(), z.string()]).transform((v) => Number(v)),
   miles: z.union([z.number(), z.string()]).transform((v) => Number(v)),
@@ -36,7 +40,7 @@ export default async function loadsRoutes(app: FastifyInstance) {
     const b = parsed.data;
 
     const load = await prisma.load.create({
-      data: {
+      data: ({
         companyId: b.companyId,
         dispatcherId: b.dispatcherId,
         driverId: b.driverId,
@@ -48,36 +52,41 @@ export default async function loadsRoutes(app: FastifyInstance) {
         pickupAddress: b.pickupAddress,
         pickupZip: b.pickupZip,
         pickupAt: b.pickupAt ? new Date(b.pickupAt) : null,
+        pickupWindowStart: b.pickupWindowStart || null,
+        pickupWindowEnd: b.pickupWindowEnd || null,
         deliveryCity: b.deliveryCity,
         deliveryState: b.deliveryState,
         deliveryAddress: b.deliveryAddress,
         deliveryZip: b.deliveryZip,
         deliveryAt: b.deliveryAt ? new Date(b.deliveryAt) : null,
+        deliveryWindowStart: b.deliveryWindowStart || null,
+        deliveryWindowEnd: b.deliveryWindowEnd || null,
         rate: b.rate,
         miles: b.miles,
         deadhead: b.deadhead ?? 0,
         status: b.status,
-      },
+      }) as any,
       include: { driver: true, dispatcher: true, company: true },
     });
 
-    const rate = Number(load.rate);
-    const rpm = load.miles ? rate / load.miles : 0;
+    const l: any = load as any;
+    const rate = Number(l.rate);
+    const rpm = l.miles ? rate / l.miles : 0;
 
     return reply.code(201).send({
-      id: load.id,
-      companyId: load.companyId,
-      dispatcherId: load.dispatcherId,
-      driverId: load.driverId,
-      deliveryDate: load.deliveryAt ? load.deliveryAt.toISOString().slice(0, 10) : null,
-      deliveryCity: load.deliveryCity, deliveryState: load.deliveryState,
-      pickupCity: load.pickupCity, pickupState: load.pickupState,
-      loadNumber: load.loadNumber, brokerName: load.brokerName,
-      status: load.status,
-      rate, miles: load.miles, deadhead: load.deadhead, rpm: Number(rpm.toFixed(2)),
-      driver: { id: load.driver.id, name: load.driver.name },
-      dispatcher: { id: load.dispatcher.id, name: load.dispatcher.name },
-      company: { id: load.company.id, name: load.company.name },
+      id: l.id,
+      companyId: l.companyId,
+      dispatcherId: l.dispatcherId,
+      driverId: l.driverId,
+      deliveryDate: l.deliveryAt ? l.deliveryAt.toISOString().slice(0, 10) : null,
+      deliveryCity: l.deliveryCity, deliveryState: l.deliveryState,
+      pickupCity: l.pickupCity, pickupState: l.pickupState,
+      loadNumber: l.loadNumber, brokerName: l.brokerName,
+      status: l.status,
+      rate, miles: l.miles, deadhead: l.deadhead, rpm: Number(rpm.toFixed(2)),
+      driver: { id: l.driver.id, name: l.driver.name },
+      dispatcher: { id: l.dispatcher.id, name: l.dispatcher.name },
+      company: { id: l.company.id, name: l.company.name },
     });
   });
 }
