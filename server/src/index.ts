@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import { prisma } from "./db.js";
 import boardRoutes from "./routes/board.js";
 import loadsRoutes from "./routes/loads.js";
+import flagsRoutes from "./routes/flags.js";
 
 async function startServer() {
   const app = Fastify({ logger: true });
@@ -10,6 +11,7 @@ async function startServer() {
   await app.register(cors, { origin: "http://localhost:5173" });
   await app.register(boardRoutes, { prefix: "/api" });
   await app.register(loadsRoutes, { prefix: "/api" });
+  await app.register(flagsRoutes, { prefix: "/api" });
   console.log("Routes registered");
 
   app.get("/health", async () => ({ ok: true }));

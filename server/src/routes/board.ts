@@ -28,6 +28,37 @@ export default async function boardRoutes(app: FastifyInstance) {
       orderBy: [{ deliveryAt: "asc" }],
     });
 
+    // Get flags for the same date range
+    const flags = await prisma.cellFlag.findMany({
+      where: {
+        day: { gte: startDt, lte: endDt },
+        ...(companyId ? { companyId } : {}),
+      },
+      include: {
+        driver: { select: { id: true, name: true } },
+        creator: { select: { id: true, name: true } },
+        updater: { select: { id: true, name: true } },
+      },
+    });
+
+    // Group flags by driverId+day for easy lookup
+    const flagsByDriverDay: Record<string, any> = {};
+    flags.forEach(flag => {
+      const key = `${flag.driverId}-${flag.day.toISOString().slice(0, 10)}`;
+      flagsByDriverDay[key] = {
+        id: flag.id,
+        type: flag.type,
+        note: flag.note,
+        loadId: flag.loadId,
+        companyId: flag.companyId,
+        createdAt: flag.createdAt,
+        updatedAt: flag.updatedAt,
+        driver: flag.driver,
+        creator: flag.creator,
+        updater: flag.updater,
+      };
+    });
+
     const out = loads.map(l => {
       const rate = Number(l.rate);
       const rpm = l.miles ? rate / l.miles : 0;
@@ -48,6 +79,11 @@ export default async function boardRoutes(app: FastifyInstance) {
       };
     });
 
-    return { range: { start, end }, count: out.length, loads: out };
+    return { 
+      range: { start, end }, 
+      count: out.length, 
+      loads: out,
+      flags: flagsByDriverDay
+    };
   });
 }

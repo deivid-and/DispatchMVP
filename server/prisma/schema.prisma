@@ -35,6 +35,14 @@ enum LoadStatus {
   Canceled
 }
 
+enum FlagType {
+  red
+  orange
+  brown
+  dark
+  purple
+}
+
 enum SettlementStatus {
   open
   finalized
@@ -52,6 +60,8 @@ model User {
   drivers        Driver[]
   loads          Load[]   @relation("LoadsByDispatcher")
   settlements    DispatcherSettlement[]
+  flagsCreated   CellFlag[] @relation("FlagCreator")
+  flagsUpdated   CellFlag[] @relation("FlagUpdater")
 }
 
 model Company {
@@ -62,6 +72,7 @@ model Company {
   updatedAt DateTime @updatedAt
   drivers   Driver[]
   loads     Load[]
+  flags     CellFlag[]
 }
 
 model Driver {
@@ -81,6 +92,7 @@ model Driver {
   dispatcher User    @relation(fields: [dispatcherId], references: [id])
   company    Company? @relation(fields: [companyId], references: [id])
   loads      Load[]
+  flags      CellFlag[]
 }
 
 model Load {
@@ -117,6 +129,7 @@ model Load {
   dispatcher User    @relation("LoadsByDispatcher", fields: [dispatcherId], references: [id])
   driver     Driver  @relation(fields: [driverId], references: [id])
   files      LoadFile[]
+  flags      CellFlag[]
 
   @@index([dispatcherId, deliveryAt])
   @@index([driverId, deliveryAt])
@@ -149,4 +162,28 @@ model DispatcherSettlement {
   dispatcher User @relation(fields: [dispatcherId], references: [id])
 
   @@index([dispatcherId, periodStart, periodEnd])
+}
+
+model CellFlag {
+  id          String   @id @default(uuid())
+  driverId    String
+  day         DateTime @db.Date
+  companyId   String?
+  loadId      String?
+  type        FlagType
+  note        String?
+  createdBy   String
+  updatedBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  driver  Driver  @relation(fields: [driverId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id])
+  load    Load?   @relation(fields: [loadId], references: [id])
+  creator User    @relation("FlagCreator", fields: [createdBy], references: [id])
+  updater User    @relation("FlagUpdater", fields: [updatedBy], references: [id])
+
+  @@unique([driverId, day])
+  @@index([driverId, day])
+  @@index([companyId, day])
 }
