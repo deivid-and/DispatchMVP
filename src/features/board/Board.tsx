@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { getBoard, type BoardResponse, type BoardLoad } from "../../lib/api";
 import { groupByDispatcherDriverDay } from "../../lib/selectors";
 import { Popover } from "../../components/ui/Popover";
+import AddLoadModal from "../loads/AddLoadModal";
+import AddLoadForm from "../loads/AddLoadForm";
 
 export function Board({ refreshToken = 0, start, end }: { refreshToken?: number; start?: string; end?: string }) {
   const [data, setData] = useState<BoardResponse | null>(null);
@@ -13,6 +15,14 @@ export function Board({ refreshToken = 0, start, end }: { refreshToken?: number;
   const [driverPop, setDriverPop] = useState<{ show: boolean; x: number; y: number; driver?: { name: string; gross: number; miles: number; avgRpm: number } }>(() => ({ show: false, x: 0, y: 0 }));
   const [loadPop, setLoadPop] = useState<{ show: boolean; x: number; y: number; load?: BoardLoad }>(() => ({ show: false, x: 0, y: 0 }));
   const [rpmTooltip, setRpmTooltip] = useState<{ show: boolean; x: number; y: number; rpm: number }>(() => ({ show: false, x: 0, y: 0, rpm: 0 }));
+  const [showAddLoad, setShowAddLoad] = useState<{ 
+    show: boolean; 
+    driverId: string; 
+    driverName: string;
+    dispatcherId: string;
+    dispatcherName: string;
+    deliveryDate: string; 
+  } | null>(null);
 
   const isoDays = useMemo(() => {
     if (!data) return [] as string[];
@@ -37,6 +47,29 @@ export function Board({ refreshToken = 0, start, end }: { refreshToken?: number;
       .catch((e) => { if (!ignore) setErr(e.message); });
     return () => { ignore = true; };
   }, [refreshToken, start, end]);
+
+  // Helper function to determine if a day should show as transit
+  const getDayStatus = (driverLoads: BoardLoad[], dayIso: string) => {
+    const loadsForDay = driverLoads.filter(l => l.deliveryDate === dayIso);
+    if (loadsForDay.length > 0) return { type: 'load', load: loadsForDay[0] };
+    
+    // Check if this day is between two loads (transit)
+    const dayDate = new Date(dayIso + 'T00:00:00Z');
+    const sortedLoads = driverLoads.sort((a, b) => new Date(a.deliveryDate + 'T00:00:00Z').getTime() - new Date(b.deliveryDate + 'T00:00:00Z').getTime());
+    
+    for (let i = 0; i < sortedLoads.length - 1; i++) {
+      const prevLoad = sortedLoads[i];
+      const nextLoad = sortedLoads[i + 1];
+      const prevDate = new Date(prevLoad.deliveryDate + 'T00:00:00Z');
+      const nextDate = new Date(nextLoad.deliveryDate + 'T00:00:00Z');
+      
+      if (dayDate > prevDate && dayDate < nextDate) {
+        return { type: 'transit', from: prevLoad.deliveryCity, to: nextLoad.deliveryCity };
+      }
+    }
+    
+    return { type: 'empty' };
+  };
 
   if (err) return <div className="text-red-600">Error: {err}</div>;
   if (!data) return <div>Loading board…</div>;
@@ -97,24 +130,54 @@ export function Board({ refreshToken = 0, start, end }: { refreshToken?: number;
                       <div className="mt-1 text-[10px] text-gray-600">Gross ${Math.round(dr.gross).toLocaleString()} • {dr.miles.toLocaleString()}mi • {Number(dr.avgRpm).toFixed(2)} RPM</div>
                     </td>
                     {isoDays.map((iso) => {
-                      const loadsForDay: BoardLoad[] = dr.byDay[iso] || [];
-                      if (loadsForDay.length === 0) return <td key={iso} className="px-1 py-2 text-center text-gray-300 border border-gray-200">—</td>;
-                      const l = loadsForDay[0];
-                      const rpm = l.miles ? l.rate / l.miles : 0;
-                      return (
-                        <td key={iso} className="px-1 py-2 text-center border border-gray-200">
-                          <button
-                            type="button"
-                            className="relative mx-auto rounded border text-[10px] px-1 py-1 font-semibold w-full max-w-[100px] truncate bg-white hover:bg-gray-50 border-gray-300"
-                            onClick={(e) => setLoadPop({ show: true, x: e.clientX + 8, y: e.clientY + 8, load: l })}
-                            onMouseEnter={(e) => setRpmTooltip({ show: true, x: e.clientX + 8, y: e.clientY - 20, rpm })}
-                            onMouseLeave={() => setRpmTooltip({ show: false, x: 0, y: 0, rpm: 0 })}
-                          >
-                            <span className="block text-gray-800 font-medium truncate">{l.deliveryCity}, {l.deliveryState}</span>
-                            <span className="block text-[9px] text-gray-600 truncate">${Math.round(l.rate).toLocaleString()} / {l.miles.toLocaleString()}mi</span>
-                          </button>
-                        </td>
-                      );
+                      const dayStatus = getDayStatus(Object.values(dr.byDay).flat(), iso);
+                      
+                      if (dayStatus.type === 'load' && dayStatus.load) {
+                        const l = dayStatus.load;
+                        const rpm = l.miles ? l.rate / l.miles : 0;
+                        return (
+                          <td key={iso} className="px-1 py-2 text-center border border-gray-200">
+                            <button
+                              type="button"
+                              className="relative mx-auto rounded border text-[10px] px-1 py-1 font-semibold w-full max-w-[100px] truncate bg-white hover:bg-gray-50 border-gray-300"
+                              onClick={(e) => setLoadPop({ show: true, x: e.clientX + 8, y: e.clientY + 8, load: l })}
+                              onMouseEnter={(e) => setRpmTooltip({ show: true, x: e.clientX + 8, y: e.clientY - 20, rpm })}
+                              onMouseLeave={() => setRpmTooltip({ show: false, x: 0, y: 0, rpm: 0 })}
+                            >
+                              <span className="block text-gray-800 font-medium truncate">{l.deliveryCity}, {l.deliveryState}</span>
+                              <span className="block text-[9px] text-gray-600 truncate">${Math.round(l.rate).toLocaleString()} / {l.miles.toLocaleString()}mi</span>
+                            </button>
+                          </td>
+                        );
+                      } else if (dayStatus.type === 'transit') {
+                        return (
+                          <td key={iso} className="px-1 py-2 text-center border border-gray-200">
+                            <div className="mx-auto rounded border text-[9px] px-1 py-1 w-full max-w-[100px] truncate bg-yellow-50 border-yellow-300 text-yellow-700">
+                              <span className="block font-medium truncate">Transit</span>
+                              <span className="block text-[8px] truncate">{dayStatus.from} → {dayStatus.to}</span>
+                            </div>
+                          </td>
+                        );
+                      } else {
+                        return (
+                          <td key={iso} className="px-1 py-2 text-center border border-gray-200">
+                            <button
+                              type="button"
+                              className="w-full h-full min-h-[40px] text-gray-300 hover:text-gray-500 hover:bg-gray-50 rounded border-2 border-dashed border-gray-200 hover:border-gray-300"
+                              onClick={() => setShowAddLoad({ 
+                                show: true, 
+                                driverId: dr.id, 
+                                driverName: dr.name,
+                                dispatcherId: disp.id,
+                                dispatcherName: disp.name,
+                                deliveryDate: iso 
+                              })}
+                            >
+                              +
+                            </button>
+                          </td>
+                        );
+                      }
                     })}
                   </tr>
                 ))}
@@ -151,6 +214,24 @@ export function Board({ refreshToken = 0, start, end }: { refreshToken?: number;
         >
           RPM: {rpmTooltip.rpm.toFixed(2)}
         </div>
+      )}
+
+      {showAddLoad && (
+        <AddLoadModal open={showAddLoad.show} onClose={() => setShowAddLoad(null)} title={`Add Load for ${showAddLoad.driverName} on ${showAddLoad.deliveryDate}`}>
+          <AddLoadForm
+            defaultCompanyId="co1"
+            defaultDispatcherId={showAddLoad.dispatcherId}
+            defaultDriverId={showAddLoad.driverId}
+            defaultPickupDateIso={showAddLoad.deliveryDate}
+            defaultDeliveryDateIso={showAddLoad.deliveryDate}
+            onCancel={() => setShowAddLoad(null)}
+            onSuccess={() => {
+              setShowAddLoad(null);
+              // Refresh the board
+              window.location.reload();
+            }}
+          />
+        </AddLoadModal>
       )}
     </div>
   );

@@ -7,9 +7,11 @@ type Props = {
   onCancel: () => void;
   defaultPickupDateIso?: string; // YYYY-MM-DD (from board week)
   defaultDeliveryDateIso?: string; // YYYY-MM-DD (from board week)
+  defaultDispatcherId?: string;
+  defaultDriverId?: string;
 };
 
-export default function AddLoadForm({ defaultCompanyId, onSuccess, onCancel, defaultPickupDateIso, defaultDeliveryDateIso }: Props) {
+export default function AddLoadForm({ defaultCompanyId, onSuccess, onCancel, defaultPickupDateIso, defaultDeliveryDateIso, defaultDispatcherId, defaultDriverId }: Props) {
   const [form, setForm] = useState({
     companyId: defaultCompanyId,
     dispatcherId: "",
@@ -85,9 +87,11 @@ export default function AddLoadForm({ defaultCompanyId, onSuccess, onCancel, def
         ...f,
         pickupDate: f.pickupDate || defaultPickupDateIso || toDateInput(today),
         deliveryDate: f.deliveryDate || defaultDeliveryDateIso || toDateInput(tomorrow),
+        dispatcherId: f.dispatcherId || defaultDispatcherId || "",
+        driverId: f.driverId || defaultDriverId || "",
       };
     });
-  }, [defaultPickupDateIso, defaultDeliveryDateIso]);
+  }, [defaultPickupDateIso, defaultDeliveryDateIso, defaultDispatcherId, defaultDriverId]);
 
   function upd<K extends keyof typeof form>(k: K, v: string) {
     setForm(f => ({ ...f, [k]: v }));

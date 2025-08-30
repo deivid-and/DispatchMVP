@@ -19,7 +19,7 @@ async function main() {
     create: { name: "Roger", email: "dispatcher@local", role: "dispatcher", commissionPct: "05.00" },
   });
 
-  // Additional dispatchers for JMJMN
+  // Additional dispatchers for JMJNM
   const extraDispatchers = [] as { id: string; name: string }[];
   for (let i = 1; i <= 5; i++) {
     const email = `dispatcher${i}@local`;
@@ -73,7 +73,7 @@ async function main() {
     },
   });
 
-  // Generate 10 drivers for each extra dispatcher under JMJMN
+  // Generate 10 drivers for each extra dispatcher under JMJNM
   const trailerTypes = ["dryvan", "reefer", "flatbed", "stepdeck"] as const;
   const rand = (n: number) => Math.floor(Math.random() * n);
   const makeId = (prefix: string, i: number, j: number) => `seed-${prefix}-${i}-${j}`;
@@ -114,107 +114,7 @@ async function main() {
     }
   }
 
-  // Loads (dates ISO; rpm is derived in UI)
-  await db.load.upsert({
-    where: { id: "seed-l1" },
-    update: {},
-    create: {
-      id: "seed-l1",
-      companyId: jmjmn.id,
-      dispatcherId: dispatcher.id,
-      driverId: dr1.id,
-      brokerName: "CH Robinson",
-      brokerMcNumber: "021866",
-      loadNumber: "118020",
-      pickupName: "JAYCO",
-      pickupAddress: "1470 AVENUE T 1222",
-      pickupCity: "Chicago", pickupState: "IL", pickupZip: "75050",
-      pickupAt: new Date("2025-07-21T13:00:00Z"),
-      deliveryAddress: "7701 B COMMERCE BLVD",
-      deliveryCity: "Dallas", deliveryState: "TX", deliveryZip: "32404",
-      deliveryAt: new Date("2025-07-21T18:00:00Z"),
-      rate: "1200.00", miles: 600, deadhead: 140, status: "Ready",
-    },
-  });
-
-  await db.load.upsert({
-    where: { id: "seed-l2" },
-    update: {},
-    create: {
-      id: "seed-l2",
-      companyId: jmjmn.id,
-      dispatcherId: dispatcher.id,
-      driverId: dr1.id,
-      brokerName: "TQL",
-      loadNumber: "118021",
-      pickupName: "ABC",
-      pickupAddress: "123 Main St",
-      pickupCity: "Dallas", pickupState: "TX", pickupZip: "75201",
-      pickupAt: new Date("2025-07-22T09:00:00Z"),
-      deliveryAddress: "456 Market St",
-      deliveryCity: "Houston", deliveryState: "TX", deliveryZip: "77001",
-      deliveryAt: new Date("2025-07-22T16:00:00Z"),
-      rate: "1000.00", miles: 500, deadhead: 0, status: "Transit",
-    },
-  });
-
-  await db.load.upsert({
-    where: { id: "seed-l3" },
-    update: {},
-    create: {
-      id: "seed-l3",
-      companyId: jmjmn.id,
-      dispatcherId: dispatcher.id,
-      driverId: dr2.id,
-      brokerName: "Landstar",
-      loadNumber: "118023",
-      pickupName: "DEF",
-      pickupAddress: "111 River Rd",
-      pickupCity: "St. Louis", pickupState: "MO", pickupZip: "63101",
-      pickupAt: new Date("2025-07-21T08:00:00Z"),
-      deliveryAddress: "222 Lake St",
-      deliveryCity: "Chicago", deliveryState: "IL", deliveryZip: "60601",
-      deliveryAt: new Date("2025-07-21T15:00:00Z"),
-      rate: "900.00", miles: 400, deadhead: 0, status: "Transit",
-    },
-  });
-
-  // Generate loads for new drivers in target week 2025-07-21..2025-07-23
-  let loadSeq = 200000;
-  for (const nd of newDrivers) {
-    const numLoads = 2; // Mon and Tue for visibility
-    for (let k = 0; k < numLoads; k++) {
-      const puIdx = rand(cityStatePairs.length);
-      let deIdx = rand(cityStatePairs.length);
-      if (deIdx === puIdx) deIdx = (deIdx + 1) % cityStatePairs.length;
-      const pu = cityStatePairs[puIdx];
-      const de = cityStatePairs[deIdx];
-      const day = k === 0 ? "2025-07-21" : "2025-07-22";
-      const id = `seed-gen-${nd.id}-${k}`;
-      await db.load.upsert({
-        where: { id },
-        update: {},
-        create: {
-          id,
-          companyId: jmjmn.id,
-          dispatcherId: nd.dispatcherId,
-          driverId: nd.id,
-          brokerName: ["TQL", "Coyote", "CH Robinson", "Landstar"][rand(4)],
-          loadNumber: String(loadSeq++),
-          pickupName: "Warehouse",
-          pickupAddress: "100 Main St",
-          pickupCity: pu.city, pickupState: pu.state, pickupZip: "00000",
-          pickupAt: new Date(`${day}T08:00:00Z`),
-          deliveryAddress: "200 Market Rd",
-          deliveryCity: de.city, deliveryState: de.state, deliveryZip: "00000",
-          deliveryAt: new Date(`${day}T17:00:00Z`),
-          rate: String(800 + rand(1200) + 200), miles: 300 + rand(900), deadhead: rand(150), status: ["Ready", "Transit", "HT"][rand(3)] as any,
-        },
-      });
-    }
-  }
-
-  console.log("Seeded: users, companies, drivers, loads (including generated)");
+  console.log("Seeded: users, companies, drivers (no loads)");
 }
 
 main().catch((e) => {
